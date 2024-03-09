@@ -4,6 +4,10 @@ use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_hal::sys::{GPIO_OUT_W1TC_REG, GPIO_OUT_W1TS_REG};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
+
+mod generated;
+use generated::frame;
+
 fn main() {
     // It is necessary to call this function once. Otherwise some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
@@ -14,7 +18,9 @@ fn main() {
 
     let p = Peripherals::take().unwrap();
 
-    // must be pins 0..31
+    //let image = include_bytes!("../out.bin");
+
+    // must be pins 0..=31 as pins 32..=39 are controlled by another register
     let r1 = PinDriver::output(p.pins.gpio2).unwrap();
     let g1 = PinDriver::output(p.pins.gpio4).unwrap();
     let b1 = PinDriver::output(p.pins.gpio5).unwrap();
@@ -33,43 +39,27 @@ fn main() {
     let rgb2_mask: u32 = (1 << r2.pin()) | (1 << g2.pin()) | (1 << b2.pin());
     let rgb_mask = rgb1_mask | rgb2_mask;
     println!("{rgb_mask:032b}");
-    // 00000000001011000000000000110100
 
     let addrmask: u32 = (1 << a.pin()) | (1 << b.pin()) | (1 << c.pin()) | (1 << d.pin());
 
     // ~400us per frame
-    // 4 bit pwm (25% bright) = 1.6ms
-    // 4 bit color (16 color) = 6.4ms
-    // => 156fps
+    // 2 bit pwm (50% bright) = 800us
+    // 5 bit color (32 color) = 4ms
+    // => 250fps
+    // 6+ bit color = crash with stack overflow ((
 
     loop {
-        // each item = 1bit (r1g1b1r2g2b2__)
-        // 8 items = 1 pix
-        //             R1 G1 B1 R2 G2 B2
-        // byte [64*0] b0 b0 b0 b0 b0 b0
-        // byte [64*1] b1 b1 b1 b1 b1 b1
-        // ........... .................
-        // byte [64*7] b7 b7 b7 b7 b7 b7
-        //
-        // => need 8 bytes * 16 rows * 64 columns = 8KiB per frame
-        // probably 16/32 colors is good => 4/5KiB per frame
-        // overhead is 25% (6/8 bits are used)
-        //
-        // 1 bit per frame
-        let frame = [[[0b100_100_00_u8; 64]; 16]; 1];
-        // 2 bit per frame
-        // let mut frame = [[[0b100_000_00_u8; 64]; 16]; 2];
         let _start = Instant::now();
 
         // enable output
         oe.set_low().unwrap();
         // silly pwm
         for brightness in [u32::MAX, 0x0] {
-            //for brightness in [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff] {
             for data in frame {
                 for i in 0..data.len() {
                     let count = i;
                     let row = data[i];
+                    oe.set_low().unwrap();
                     for x in 0..row.len() {
                         let element = row[x];
                         let br1 = element & 0b1000_0000;
@@ -86,7 +76,7 @@ fn main() {
                         // b2 = 21; b2bit = 2; <<19;
                         let pixdata = pixdata | ((br2 << 14) | (bg2 << 16) | (bb2 << 19)) as u32;
                         let pixdata = pixdata & rgb_mask;
-                        //let pixdata = pixdata & brightness;
+                        let pixdata = pixdata & brightness;
                         let pixdata = pixdata | (1 << 15); // clk
                         let notpixdata: u32 = (!pixdata) & rgb_mask;
 
@@ -100,7 +90,7 @@ fn main() {
                             core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, 1 << 15);
                         }
                     }
-                    //oe.set_high().unwrap();
+                    oe.set_high().unwrap();
                     // Prevents ghosting, no idea why
                     Ets::delay_us(2);
                     lat.set_low().unwrap();
@@ -128,7 +118,7 @@ fn main() {
         // Prevents one row from being much brighter than the others
         oe.set_high().unwrap();
 
-        // println!("Elapsed {:?}", start.elapsed());
+        println!("Elapsed {:?}", _start.elapsed());
         // keep watchdog happy
         sleep(Duration::from_millis(10));
     }
