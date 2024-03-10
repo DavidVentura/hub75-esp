@@ -30,7 +30,9 @@ for fname in sorted(glob.glob("/home/david/nyan/*png")):
 
     print('[')
     # 6 bit color-depth
-    for mask in [0x80, 0x40, 0x20, 0x10, 0x8, 0x4]:
+    #for mask in [0x80, 0x40, 0x20, 0x10, 0x8, 0x4]:
+    # 5 bit color-depth
+    for mask in [0x80, 0x40, 0x20, 0x10, 0x8]:
         print('[')
         for y in range(0, height//2): # need to take 2 pix at once
             print('[', end='')
