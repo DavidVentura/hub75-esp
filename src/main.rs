@@ -35,7 +35,7 @@ fn main() {
 
     let clk = PinDriver::output(p.pins.gpio25).unwrap();
     let lat = PinDriver::output(p.pins.gpio26).unwrap();
-    let mut oe = PinDriver::output(p.pins.gpio27).unwrap();
+    let oe = PinDriver::output(p.pins.gpio27).unwrap();
 
     let lat_pin = lat.pin() as u8;
     let oe_pin = oe.pin() as u8;
@@ -56,7 +56,8 @@ fn main() {
                 let _start = Instant::now();
                 let mut count = 0;
                 // enable output
-                oe.set_low().unwrap();
+                fast_pin_down(oe_pin);
+                //oe.set_low().unwrap();
                 // silly pwm
                 let mut bit_nr = frame.len();
                 for data in frame {
@@ -136,7 +137,8 @@ fn main() {
                 }
                 // Disable the output
                 // Prevents one row from being much brighter than the others
-                oe.set_high().unwrap();
+                //oe.set_high().unwrap();
+                fast_pin_up(oe_pin);
                 println!("Elapsed {:?}; count: {count}", _start.elapsed());
                 // keep watchdog happy / lower brightness
                 sleep(Duration::from_millis(4));
