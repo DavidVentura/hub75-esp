@@ -42,23 +42,21 @@ fn main() {
 
     let addrmask: u32 = (1 << a.pin()) | (1 << b.pin()) | (1 << c.pin()) | (1 << d.pin());
 
-    // ~400us per frame
-    // 2 bit pwm (50% bright) = 800us
-    // 5 bit color (32 color) = 4ms
-    // => 250fps
-    // 6+ bit color = crash with stack overflow ((
-
     loop {
         let _start = Instant::now();
 
+        let mut count = 0;
+        let mut incount: u32 = 0;
         // enable output
         oe.set_low().unwrap();
         // silly pwm
         for brightness in [u32::MAX] {
             let mut bit_nr = frame.len();
             for data in frame {
+                count += 1;
                 let tot_frames = 1 << (bit_nr - 1);
                 for _ in 0..tot_frames {
+                    incount += 1;
                     for i in 0..data.len() {
                         let count = i;
                         let row = data[i];
@@ -72,33 +70,31 @@ fn main() {
                             let bg2: u32 = element as u32 & 0b0000_1000;
                             let bb2: u32 = element as u32 & 0b0000_0100;
 
-                            // r1 = 3 (2 base0); r2bit = 8; 8>>5 (
                             let pixdata: u32 = ((br1 >> 5) | (bg1 >> 2) | bb1) as u32;
-                            // r2 = 18; r2bit = 4; <<14;
-                            // g2 = 19; g2bit = 3; <<16;
-                            // b2 = 21; b2bit = 2; <<19;
                             let pixdata =
                                 pixdata | ((br2 << 14) | (bg2 << 16) | (bb2 << 19)) as u32;
                             let pixdata = pixdata & rgb_mask;
-                            let pixdata = pixdata & brightness;
-                            let pixdata = pixdata | (1 << 15); // clk
+                            // let pixdata = pixdata & brightness;
                             let notpixdata: u32 = (!pixdata) & rgb_mask;
+                            let pixdata = pixdata | (1 << 15); // clk
 
                             unsafe {
-                                // i _assume_ it's necessary to set clk low as its own thing to give
-                                // the other pins time to settle; but i've not tested
-                                core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, notpixdata);
+                                // the data is valid when clock goes _up_
+                                core::ptr::write_volatile(
+                                    GPIO_OUT_W1TC_REG as *mut _,
+                                    notpixdata | (1 << 15),
+                                );
                                 // pix data + clk
                                 core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, pixdata);
-                                // clk low
-                                core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, 1 << 15);
+
+                                // could now bring clock _down_ to make sure changes are not valid
+                                // but it is not necessary - when we call the first write_volatile
+                                // the clock goes down
+                                // core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, 1 << 15);
                             }
                         }
                         oe.set_high().unwrap();
-                        // Prevents ghosting, no idea why
-                        Ets::delay_us(2);
                         lat.set_low().unwrap();
-                        Ets::delay_us(2);
                         lat.set_high().unwrap();
                         // Select row
 
@@ -115,18 +111,21 @@ fn main() {
                         }
 
                         //Ets::delay_us(2);
-                        //oe.set_low().unwrap();
+                        oe.set_low().unwrap();
                     }
                 }
                 bit_nr -= 1;
             }
         }
 
-        println!("Elapsed {:?}", _start.elapsed());
         // Disable the output
         // Prevents one row from being much brighter than the others
         oe.set_high().unwrap();
+        println!(
+            "Elapsed {:?}; count: {count}; incount {incount}",
+            _start.elapsed()
+        );
         // keep watchdog happy / lower brightness
-        sleep(Duration::from_millis(3));
+        sleep(Duration::from_millis(10));
     }
 }
