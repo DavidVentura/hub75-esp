@@ -74,8 +74,8 @@ fn main() {
                     // resolution by utilizing the time factor instead of variable brightness
                     let tot_frames = 1 << (bit_nr - 1);
                     for _ in 0..tot_frames {
-                        for i in 0..data.len() {
-                            let row = data[i];
+                        for (i, row) in data.iter().enumerate() {
+                            //let row = data[i];
                             //oe.set_low().unwrap();
                             fast_pin_down(oe_pin);
                             for x in 0..row.len() {
