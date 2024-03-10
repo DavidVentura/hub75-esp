@@ -1,10 +1,10 @@
 ## HUB75
 
-Attempt for a fast-enough bitbanged HUB75 driver on an ESP32
+A fast-enough bitbanged HUB75 driver on an ESP32
 
-## Panel
-As these panels are RGB111, displaying more than 1-bit color can be done by iteratively displaying each bit of the depth.
-On these panels, you need to provide 2 rows of data at once: x and x+16; both halves of the panel are filled simultaneously.
+125 FPS on 6-bit images and 250FPS on 5-bit images.
+
+https://github.com/DavidVentura/hub75-esp/assets/3650670/3939f794-dcc7-4f9f-943d-b73d2d7a5f91
 
 ## Image format
 The image format I came up with is having the pixel for both rows packed into the same byte: `[r1_g1b1r2_g2b2]` where `_` are two ignored bits.
@@ -15,15 +15,18 @@ At 64x32, each RGB image takes 1KiB per bit of depth -- a 6-bit-depth image uses
 
 The screens are 16bit -- RGB565 so going beyond 6 bit depth doesn't make sense.
 
+As these panels are RGB111, displaying more than 1-bit color can be done by iteratively displaying each bit of the depth.
 The images are composed of "frames" which use [BCM](http://www.batsocks.co.uk/readme/art_bcm_3.htm) to show higher color depth.
+
+![image](https://github.com/DavidVentura/hub75-esp/assets/3650670/853cd795-cb46-4df6-82f5-fcf20c315052)
 
 ## Speed
 
-Each 'frame' can be rendered by bit-banging the protocol in ~120us; but that has to be multiplied with the bit depth (6 => 2<sup>6</sup> => 64) and the brightness PWM factor (currently disabled) which makes each full frame take ~7.9ms (126 fps).
+Each 'frame' can be rendered by bit-banging the protocol in ~120us; but that has to be done 2<sup>bit-depth</sup> times (6 => 2<sup>6</sup> => 64) which makes each full frame take ~7.9ms.
 
 Per my calculation the clock runs at 8.2MHz and that's probably the upper limit.
 
-At this speed, it's reasonable to run 2 screens on 6 bit depth, or up to 4 on 5 bit depth.
+At this speed, it's reasonable to run 2 screens on 6-bit depth, or up to 4 on 5-bit depth.
 
 ## Limitations
 
