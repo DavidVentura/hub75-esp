@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 mod generated;
 use generated::frames;
 
+#[link_section = ".iram1"]
 fn main() {
     // It is necessary to call this function once. Otherwise some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
@@ -43,7 +44,6 @@ fn main() {
     let rgb1_mask: u32 = (1 << r1.pin()) | (1 << g1.pin()) | (1 << b1.pin());
     let rgb2_mask: u32 = (1 << r2.pin()) | (1 << g2.pin()) | (1 << b2.pin());
     let rgb_mask = rgb1_mask | rgb2_mask;
-    println!("{rgb_mask:032b}");
 
     let addrmask: u32 = (1 << a.pin()) | (1 << b.pin()) | (1 << c.pin()) | (1 << d.pin());
 
@@ -53,15 +53,11 @@ fn main() {
         for frame in frames.iter() {
             // make frames last longer
             for _ in 0..5 {
-                let _start = Instant::now();
-                let mut count = 0;
+                //let _start = Instant::now();
                 // enable output
                 fast_pin_down(oe_pin);
-                //oe.set_low().unwrap();
-                // silly pwm
                 let mut bit_nr = frame.len();
                 for data in frame {
-                    count += 1;
                     // this is a simple binary coded modulation which gives more time on for more
                     // significant bits; explanation in littel-endian ([n, n-1, .., 1, 0])
                     //
@@ -76,81 +72,57 @@ fn main() {
                     let tot_frames = 1 << (bit_nr - 1);
                     for _ in 0..tot_frames {
                         for (i, row) in data.iter().enumerate() {
-                            //let row = data[i];
-                            //oe.set_low().unwrap();
                             fast_pin_down(oe_pin);
-                            for x in 0..row.len() {
-                                // incount += 1;
-                                let element = row[x] as u32;
-                                let rgb1 = element & 0b1101_0000;
-                                let rgb2 = element & 0b0000_1011;
+                            for element in row.iter() {
+                                let rgb1 = *element as u32 & 0b1101_0000;
+                                let rgb2 = *element as u32 & 0b0000_1011;
 
                                 let pixdata: u32 = rgb1 >> 2;
-                                let pixdata = pixdata | (rgb2 << 18);
-                                // this & rgb_mask is safety -- could be removed
-                                // let pixdata = pixdata & rgb_mask;
-                                // this & rgb_mask is _not_ safety; completely necessary
-                                let notpixdata: u32 = (!pixdata) & rgb_mask;
-                                let pixdata = pixdata | (1 << clkpin); // clk
+                                let pixdata = pixdata | (rgb2 << 18) | (1 << clkpin);
+                                let notpixdata: u32 = ((!pixdata) & rgb_mask) | (1 << clkpin);
 
-                                unsafe {
-                                    // the data is valid when clock goes _up_
-                                    core::ptr::write_volatile(
-                                        GPIO_OUT_W1TC_REG as *mut _,
-                                        notpixdata | (1 << clkpin),
-                                    );
-                                    // pix data + clk
-                                    core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, pixdata);
-
-                                    // could now bring clock _down_ to make sure changes are not valid
-                                    // but it is not necessary - when we call the first write_volatile
-                                    // the clock goes down
-                                    // core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, 1 << clkpin);
-                                }
+                                // set some pixel values & clock _down_
+                                fast_pin_clear(notpixdata);
+                                // set remaining pixel values & clock _up_
+                                fast_pin_set(pixdata);
                             }
                             fast_pin_up(oe_pin);
-                            //oe.set_high().unwrap();
-                            //Ets::delay_us(2);
-                            //lat.set_low().unwrap();
                             fast_pin_down(lat_pin);
-                            //Ets::delay_us(2);
-                            //lat.set_high().unwrap();
                             fast_pin_up(lat_pin);
-                            // Select row
 
                             let addrdata: u32 = (i as u32) << 12;
-                            //println!("{addrdata:032b} {i:032b}");
                             let not_addrdata: u32 = !addrdata & addrmask;
-                            unsafe {
-                                core::ptr::write_volatile(
-                                    GPIO_OUT_W1TC_REG as *mut _,
-                                    not_addrdata,
-                                );
-                                core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, addrdata);
-                            }
-
-                            //oe.set_low().unwrap();
-                            //Ets::delay_us(2);
+                            fast_pin_clear(not_addrdata);
+                            fast_pin_set(addrdata);
                         }
                     }
                     bit_nr -= 1;
                 }
                 // Disable the output
                 // Prevents one row from being much brighter than the others
-                //oe.set_high().unwrap();
                 fast_pin_up(oe_pin);
-                println!("Elapsed {:?}; count: {count}", _start.elapsed());
-                // keep watchdog happy / lower brightness
-                sleep(Duration::from_millis(4));
             }
         }
     }
 }
 
 #[inline]
+fn fast_pin_set(pins: u32) {
+    unsafe {
+        core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, pins);
+    }
+}
+#[inline]
+fn fast_pin_clear(pins: u32) {
+    unsafe {
+        core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, pins);
+    }
+}
+
+#[inline]
 fn fast_pin_up(idx: u8) {
     unsafe {
-        core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, 1 << (idx));
+        core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, 1 << idx);
     }
 }
 #[inline]
