@@ -54,9 +54,20 @@ fn main() {
             let mut bit_nr = frame.len();
             for data in frame {
                 count += 1;
+                // this is a simple binary coded modulation which gives more time on for more
+                // significant bits; explanation in littel-endian ([n, n-1, .., 1, 0])
+                //
+                // to modulate different colors on RGB111,
+                // bit n     gets 2^(n  ) frames ON/OFF
+                // bit (n-1) gets 2^(n-2) frames ON/OFF
+                // ...
+                // bit (0)   gets 2^(0  ) frames ON/OFF
+                //
+                // this makes the MSB have a larger impact in perception, simulating more color
+                // resolution by utilizing the time factor instead of variable brightness
                 let tot_frames = 1 << (bit_nr - 1);
                 for _ in 0..tot_frames {
-                    incount += 1;
+                    //incount += 1;
                     for i in 0..data.len() {
                         let count = i;
                         let row = data[i];
@@ -94,7 +105,9 @@ fn main() {
                             }
                         }
                         oe.set_high().unwrap();
+                        //Ets::delay_us(2);
                         lat.set_low().unwrap();
+                        //Ets::delay_us(2);
                         lat.set_high().unwrap();
                         // Select row
 
@@ -110,8 +123,8 @@ fn main() {
                             core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, addrdata);
                         }
 
+                        //oe.set_low().unwrap();
                         //Ets::delay_us(2);
-                        oe.set_low().unwrap();
                     }
                 }
                 bit_nr -= 1;
@@ -126,6 +139,6 @@ fn main() {
             _start.elapsed()
         );
         // keep watchdog happy / lower brightness
-        sleep(Duration::from_millis(10));
+        //sleep(Duration::from_millis(4));
     }
 }
