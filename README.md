@@ -15,14 +15,15 @@ At 64x32, each RGB image takes 1KiB per bit of depth -- a 6-bit-depth image uses
 
 The screens are 16bit -- RGB565 so going beyond 6 bit depth doesn't make sense.
 
+The images are composed of "frames" which use [BCM](http://www.batsocks.co.uk/readme/art_bcm_3.htm) to show higher color depth.
+
 ## Speed
 
-Each 'frame' can be rendered by bit-banging the protocol in ~120us; but that has to be multiplied with the bit depth (6 => 2^6 => 64) and the brightness PWM factor (currently disabled) which makes each full frame take ~7.9ms.
+Each 'frame' can be rendered by bit-banging the protocol in ~120us; but that has to be multiplied with the bit depth (6 => 2<sup>6</sup> => 64) and the brightness PWM factor (currently disabled) which makes each full frame take ~7.9ms (126 fps).
 
+Per my calculation the clock runs at 8.2MHz and that's probably the upper limit.
 
-Calculation is that this runs at 8.2MHz and that's probably the upper limit 
-
-64 col * 16 row * 64 (2^6 bit depth) = 65536 updates ; 7.9ms =>  126fps
+At this speed, it's reasonable to run 2 screens on 6 bit depth, or up to 4 on 5 bit depth.
 
 ## Limitations
 
