@@ -13,7 +13,7 @@ At 64x32, each RGB image takes 1KiB per bit of depth -- a normal image with 8bit
 
 ## Speed
 
-Each 'frame' can be rendered by bit-banging the protocol in ~400us; but that has to be multiplied with the bit depth (5) and the brightness PWM factor (2) which makes each full frame take ~4ms.
+Each 'frame' can be rendered by bit-banging the protocol in ~400us; but that has to be multiplied with the bit depth (5 => 2^5 => 32) and the brightness PWM factor (currently disabled) which makes each full frame take ~13ms.
 
 It's likely that with a more clever pin arrangement this can go down; but it's probably better to do this with the I2S peripheral at that point.
 

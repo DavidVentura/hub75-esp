@@ -54,72 +54,79 @@ fn main() {
         // enable output
         oe.set_low().unwrap();
         // silly pwm
-        for brightness in [u32::MAX, 0x0] {
+        for brightness in [u32::MAX] {
+            let mut bit_nr = frame.len();
             for data in frame {
-                for i in 0..data.len() {
-                    let count = i;
-                    let row = data[i];
-                    oe.set_low().unwrap();
-                    for x in 0..row.len() {
-                        let element = row[x];
-                        let br1 = element & 0b1000_0000;
-                        let bg1 = element & 0b0100_0000;
-                        let bb1 = element & 0b0010_0000;
-                        let br2: u32 = element as u32 & 0b0001_0000;
-                        let bg2: u32 = element as u32 & 0b0000_1000;
-                        let bb2: u32 = element as u32 & 0b0000_0100;
+                let tot_frames = 1 << (bit_nr - 1);
+                for _ in 0..tot_frames {
+                    for i in 0..data.len() {
+                        let count = i;
+                        let row = data[i];
+                        oe.set_low().unwrap();
+                        for x in 0..row.len() {
+                            let element = row[x];
+                            let br1 = element & 0b1000_0000;
+                            let bg1 = element & 0b0100_0000;
+                            let bb1 = element & 0b0010_0000;
+                            let br2: u32 = element as u32 & 0b0001_0000;
+                            let bg2: u32 = element as u32 & 0b0000_1000;
+                            let bb2: u32 = element as u32 & 0b0000_0100;
 
-                        // r1 = 3 (2 base0); r2bit = 8; 8>>5 (
-                        let pixdata: u32 = ((br1 >> 5) | (bg1 >> 2) | bb1) as u32;
-                        // r2 = 18; r2bit = 4; <<14;
-                        // g2 = 19; g2bit = 3; <<16;
-                        // b2 = 21; b2bit = 2; <<19;
-                        let pixdata = pixdata | ((br2 << 14) | (bg2 << 16) | (bb2 << 19)) as u32;
-                        let pixdata = pixdata & rgb_mask;
-                        let pixdata = pixdata & brightness;
-                        let pixdata = pixdata | (1 << 15); // clk
-                        let notpixdata: u32 = (!pixdata) & rgb_mask;
+                            // r1 = 3 (2 base0); r2bit = 8; 8>>5 (
+                            let pixdata: u32 = ((br1 >> 5) | (bg1 >> 2) | bb1) as u32;
+                            // r2 = 18; r2bit = 4; <<14;
+                            // g2 = 19; g2bit = 3; <<16;
+                            // b2 = 21; b2bit = 2; <<19;
+                            let pixdata =
+                                pixdata | ((br2 << 14) | (bg2 << 16) | (bb2 << 19)) as u32;
+                            let pixdata = pixdata & rgb_mask;
+                            let pixdata = pixdata & brightness;
+                            let pixdata = pixdata | (1 << 15); // clk
+                            let notpixdata: u32 = (!pixdata) & rgb_mask;
 
-                        unsafe {
-                            // i _assume_ it's necessary to set clk low as its own thing to give
-                            // the other pins time to settle; but i've not tested
-                            core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, notpixdata);
-                            // pix data + clk
-                            core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, pixdata);
-                            // clk low
-                            core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, 1 << 15);
+                            unsafe {
+                                // i _assume_ it's necessary to set clk low as its own thing to give
+                                // the other pins time to settle; but i've not tested
+                                core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, notpixdata);
+                                // pix data + clk
+                                core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, pixdata);
+                                // clk low
+                                core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, 1 << 15);
+                            }
                         }
-                    }
-                    oe.set_high().unwrap();
-                    // Prevents ghosting, no idea why
-                    Ets::delay_us(2);
-                    lat.set_low().unwrap();
-                    Ets::delay_us(2);
-                    lat.set_high().unwrap();
-                    // Select row
+                        oe.set_high().unwrap();
+                        // Prevents ghosting, no idea why
+                        Ets::delay_us(2);
+                        lat.set_low().unwrap();
+                        Ets::delay_us(2);
+                        lat.set_high().unwrap();
+                        // Select row
 
-                    let ba = (count & 1) as u32;
-                    let bb = (count & 2) as u32;
-                    let bc = (count & 4) as u32;
-                    let bd = (count & 8) as u32;
-                    let addrdata: u32 = ((ba << 23) | (bb << 12) | (bc << 12) | (bd << 24)) as u32;
-                    let not_addrdata: u32 = !addrdata & addrmask;
-                    unsafe {
-                        core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, not_addrdata);
-                        core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, addrdata);
-                    }
+                        let ba = (count & 1) as u32;
+                        let bb = (count & 2) as u32;
+                        let bc = (count & 4) as u32;
+                        let bd = (count & 8) as u32;
+                        let addrdata: u32 =
+                            ((ba << 23) | (bb << 12) | (bc << 12) | (bd << 24)) as u32;
+                        let not_addrdata: u32 = !addrdata & addrmask;
+                        unsafe {
+                            core::ptr::write_volatile(GPIO_OUT_W1TC_REG as *mut _, not_addrdata);
+                            core::ptr::write_volatile(GPIO_OUT_W1TS_REG as *mut _, addrdata);
+                        }
 
-                    //Ets::delay_us(2);
-                    //oe.set_low().unwrap();
+                        //Ets::delay_us(2);
+                        //oe.set_low().unwrap();
+                    }
                 }
+                bit_nr -= 1;
             }
         }
+
+        println!("Elapsed {:?}", _start.elapsed());
         // Disable the output
         // Prevents one row from being much brighter than the others
         oe.set_high().unwrap();
-
-        println!("Elapsed {:?}", _start.elapsed());
-        // keep watchdog happy
-        sleep(Duration::from_millis(10));
+        // keep watchdog happy / lower brightness
+        sleep(Duration::from_millis(3));
     }
 }
