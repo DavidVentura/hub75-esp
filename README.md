@@ -24,7 +24,7 @@ The images are composed of "frames" which use [BCM](http://www.batsocks.co.uk/re
 
 Each 'frame' can be rendered by bit-banging the protocol in ~120us; but that has to be done 2<sup>bit-depth</sup> times (6 => 2<sup>6</sup> => 64) which makes each full frame take ~7.9ms.
 
-Per my calculation the clock runs at 8.2MHz and that's probably the upper limit.
+Clock runs at 9.4MHz and that's probably the upper limit.
 
 At this speed, it's reasonable to run 2 screens on 6-bit depth, or up to 4 on 5-bit depth.
 
