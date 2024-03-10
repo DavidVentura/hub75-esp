@@ -67,25 +67,22 @@ fn main() {
                 // resolution by utilizing the time factor instead of variable brightness
                 let tot_frames = 1 << (bit_nr - 1);
                 for _ in 0..tot_frames {
-                    //incount += 1;
+                    incount += 1;
                     for i in 0..data.len() {
                         let count = i;
                         let row = data[i];
                         oe.set_low().unwrap();
                         for x in 0..row.len() {
-                            let element = row[x];
-                            let br1 = element & 0b1000_0000;
-                            let bg1 = element & 0b0100_0000;
-                            let bb1 = element & 0b0010_0000;
-                            let br2: u32 = element as u32 & 0b0001_0000;
-                            let bg2: u32 = element as u32 & 0b0000_1000;
-                            let bb2: u32 = element as u32 & 0b0000_0100;
+                            let element = row[x] as u32;
+                            let rgb1 = element & 0b1101_0000;
+                            let rgb2 = element & 0b0000_1011;
 
-                            let pixdata: u32 = ((br1 >> 5) | (bg1 >> 2) | bb1) as u32;
-                            let pixdata =
-                                pixdata | ((br2 << 14) | (bg2 << 16) | (bb2 << 19)) as u32;
-                            let pixdata = pixdata & rgb_mask;
+                            let pixdata: u32 = rgb1 >> 2;
+                            let pixdata = pixdata | (rgb2 << 18);
+                            // this & rgb_mask is safety -- could be removed
+                            // let pixdata = pixdata & rgb_mask;
                             // let pixdata = pixdata & brightness;
+                            // this & rgb_mask is _not_ safety; completely necessary
                             let notpixdata: u32 = (!pixdata) & rgb_mask;
                             let pixdata = pixdata | (1 << 15); // clk
 

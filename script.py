@@ -22,7 +22,7 @@ lut = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 out = []
 print('[')
-for mask in [0x80, 0x40, 0x20, 0x10, 0x8]:
+for mask in [0x80, 0x40, 0x20, 0x10, 0x8, 0x4]:
     print('[')
     for y in range(0, height//2): # need to take 2 pix at once
         print('[', end='')
@@ -31,8 +31,8 @@ for mask in [0x80, 0x40, 0x20, 0x10, 0x8]:
             r2, g2, b2 = im.getpixel((x, y+16))
             #print(r1, g1, b1, r2, g2, b2)
 
-            b1 = x * 4
-            b2 = x * 4
+            #b1 = x * 4
+            #b2 = x * 4
             r1 = lut[r1]
             g1 = lut[g1]
             b1 = lut[b1]
@@ -41,12 +41,13 @@ for mask in [0x80, 0x40, 0x20, 0x10, 0x8]:
             b2 = lut[b2]
             # for now hack for 1 bit res
             # later take bit N
-            r1 = 0b100_000_00 if r1 & mask else 0
-            g1 = 0b010_000_00 if g1 & mask else 0
-            b1 = 0b001_000_00 if b1 & mask else 0
-            r2 = 0b000_100_00 if r2 & mask else 0
-            g2 = 0b000_010_00 if g2 & mask else 0
-            b2 = 0b000_001_00 if b2 & mask else 0
+            # 1011_1011
+            r1 = 0b0001_0000 if r1 & mask else 0
+            g1 = 0b0100_0000 if g1 & mask else 0
+            b1 = 0b1000_0000 if b1 & mask else 0
+            r2 = 0b0000_0001 if r2 & mask else 0
+            g2 = 0b0000_0010 if g2 & mask else 0
+            b2 = 0b0000_1000 if b2 & mask else 0
 
 
             outpix = r1 | g1 | b1 | r2 | g2 | b2
