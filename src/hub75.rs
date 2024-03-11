@@ -1,6 +1,8 @@
 use esp_idf_hal::gpio::{AnyOutputPin, Output, Pin, PinDriver};
 use esp_idf_hal::sys::{GPIO_OUT_W1TC_REG, GPIO_OUT_W1TS_REG};
 
+/// This struct takes ownership of the necessary output pins
+/// but writes directly to them in batches, so they are not used
 pub struct Pins<'d> {
     oe_pin: u8,
     lat_pin: u8,
@@ -52,6 +54,12 @@ impl<'d> Pins<'d> {
         assert_eq!(c.pin(), b.pin() + 1);
         assert_eq!(d.pin(), c.pin() + 1);
 
+        assert_eq!(g1.pin(), r1.pin() + 2);
+        assert_eq!(b1.pin(), g1.pin() + 1);
+
+        assert_eq!(g2.pin(), r2.pin() + 1);
+        assert_eq!(b2.pin(), g2.pin() + 2);
+
         let _r1 = PinDriver::output(r1).unwrap();
         let _g1 = PinDriver::output(g1).unwrap();
         let _b1 = PinDriver::output(b1).unwrap();
@@ -93,30 +101,40 @@ pub struct Hub75<'d> {
 
 impl<'d> Hub75<'d> {
     #[link_section = ".iram1"]
-    pub fn render(&self, data: &[[[u8; 64]; 16]; 6]) {
+    pub fn render(&self, data: &[[[u8; 64]; 16]]) {
         let oe_pin = self.pins.oe_pin;
         let clkpin = self.pins.clk_pin;
         let lat_pin = self.pins.lat_pin;
         let rgb_mask = self.pins.rgb_mask;
         let addrmask = self.pins.addr_mask;
 
-        //let _start = Instant::now();
         // enable output
         fast_pin_down(oe_pin);
-        let mut bit_nr = data.len();
+        let mut bit_nr = data.len() - 1;
         for data in data {
-            // this is a simple binary coded modulation which gives more time on for more
-            // significant bits; explanation in littel-endian ([n, n-1, .., 1, 0])
+            // this is a binary coded modulation which displays the more significant bits
+            // for a longer time
             //
-            // to modulate different colors on RGB111,
-            // bit n     gets 2^(n  ) frames ON/OFF
-            // bit (n-1) gets 2^(n-2) frames ON/OFF
+            // bit n     is displayed for 2^(n  ) frames
+            // bit (n-1) is displayed for 2^(n-2) frames
             // ...
-            // bit (0)   gets 2^(0  ) frames ON/OFF
+            // bit (0)   is displayed for 2^(0  ) frames
             //
             // this makes the MSB have a larger impact in perception, simulating more color
             // resolution by utilizing the time factor instead of variable brightness
-            let tot_frames = 1 << (bit_nr - 1);
+            //
+            // Each frame is displayed for ~120us, so on a 6-bit depth image:
+            // bit 5: 3840us
+            // bit 4: 1920us
+            // bit 3:  960us
+            // bit 2:  480us
+            // bit 1:  240us
+            // bit 0:  120us
+            //
+            // total frame time: 7560us (7.5ms)
+            //
+            // Cutting the bit depth to 5-bit would halve the necessary time to display an image
+            let tot_frames = 1 << bit_nr;
             for _ in 0..tot_frames {
                 for (i, row) in data.iter().enumerate() {
                     fast_pin_down(oe_pin);
