@@ -4,7 +4,7 @@ mod hub75;
 
 use hub75::{Hub75, Pins};
 
-static FRAMES: &[u8; 675840] = include_bytes!("../data/out.bin");
+static FRAMES: &[u8; 6144 * 110] = include_bytes!("../data/out.bin");
 
 fn main() {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -38,7 +38,7 @@ fn main() {
         for frame in frames.iter() {
             for _ in 0..5 {
                 h.render(frame);
-                std::thread::sleep(std::time::Duration::from_millis(10));
+                //std::thread::sleep(std::time::Duration::from_millis(10));
             }
         }
     }

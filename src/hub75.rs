@@ -25,7 +25,7 @@ pub struct Pins<'d> {
 }
 
 impl<'d> Pins<'d> {
-    /// * Must be pins 0..=31 as pins 32..=39 are controlled by another register
+    /// The pins must be 0..=31 to be part of the control register 0.
     /// * A, B, C, D must be contiguous
     /// * R1, G1, B1 must be n, n+2, n+3 (2, 4, 5)
     /// * R2, G2, B2 must be n, n+1, n+3 (18, 19, 21)
@@ -44,12 +44,6 @@ impl<'d> Pins<'d> {
         lat: AnyOutputPin,
         oe: AnyOutputPin,
     ) -> Pins<'d> {
-        let rgb1_mask: u32 = (1 << r1.pin()) | (1 << g1.pin()) | (1 << b1.pin());
-        let rgb2_mask: u32 = (1 << r2.pin()) | (1 << g2.pin()) | (1 << b2.pin());
-        let rgb_mask = rgb1_mask | rgb2_mask;
-
-        let addr_mask: u32 = (1 << a.pin()) | (1 << b.pin()) | (1 << c.pin()) | (1 << d.pin());
-
         assert_eq!(b.pin(), a.pin() + 1);
         assert_eq!(c.pin(), b.pin() + 1);
         assert_eq!(d.pin(), c.pin() + 1);
@@ -59,6 +53,30 @@ impl<'d> Pins<'d> {
 
         assert_eq!(g2.pin(), r2.pin() + 1);
         assert_eq!(b2.pin(), g2.pin() + 2);
+
+        for p in [
+            r1.pin(),
+            g1.pin(),
+            b1.pin(),
+            r2.pin(),
+            g2.pin(),
+            b2.pin(),
+            a.pin(),
+            b.pin(),
+            c.pin(),
+            d.pin(),
+            clk.pin(),
+            lat.pin(),
+            oe.pin(),
+        ] {
+            assert!(p < 32);
+        }
+
+        let rgb1_mask: u32 = (1 << r1.pin()) | (1 << g1.pin()) | (1 << b1.pin());
+        let rgb2_mask: u32 = (1 << r2.pin()) | (1 << g2.pin()) | (1 << b2.pin());
+        let rgb_mask = rgb1_mask | rgb2_mask;
+
+        let addr_mask: u32 = (1 << a.pin()) | (1 << b.pin()) | (1 << c.pin()) | (1 << d.pin());
 
         let _r1 = PinDriver::output(r1).unwrap();
         let _g1 = PinDriver::output(g1).unwrap();
@@ -99,9 +117,45 @@ pub struct Hub75<'d> {
     pub pins: Pins<'d>,
 }
 
+/// Represents a 64x32 image in RGB111 format.
+/// The depth of the data in a Frame maps to the bit depth of the resulting image.
+///
+/// Each Frame is composed of 16 Rows of pixel data; though each Row is rendered to
+/// multiple rows on the display in parallel.
+///
+/// A given Row R is composed of 64 bytes, which represent a single bit on the R, G and B channels
+/// for two pixels; the one at R and the one at R+16.
+pub type Frame = [[[u8; 64]; 16]];
+
 impl<'d> Hub75<'d> {
+    /// Render a Frame using binary coded modulation (BCM) which displays the
+    /// more significant bits for a longer time
+    ///
+    /// ```
+    /// bit n     is displayed for 2^(n  ) frames
+    /// bit (n-1) is displayed for 2^(n-2) frames
+    /// ...
+    /// bit (0)   is displayed for 2^(0  ) frames
+    /// ```
+    ///
+    /// Doing this allows to represent a larger color spectrum, at the cost of lower perceived
+    /// FPS;
+    ///
+    /// Each frame is displayed for ~120us, so on a 6-bit depth image:
+    /// ```
+    /// bit 5: 3840us
+    /// bit 4: 1920us
+    /// bit 3:  960us
+    /// bit 2:  480us
+    /// bit 1:  240us
+    /// bit 0:  120us
+    ///
+    /// total frame time: 7560us (7.5ms)
+    /// ```
+    ///
+    /// At 6-bit depth, it's possible to render 64x64, but 128x64 requires going to 5-bit.
     #[link_section = ".iram1"]
-    pub fn render(&self, data: &[[[u8; 64]; 16]]) {
+    pub fn render(&self, data: &Frame) {
         let oe_pin = self.pins.oe_pin;
         let clkpin = self.pins.clk_pin;
         let lat_pin = self.pins.lat_pin;
@@ -112,28 +166,6 @@ impl<'d> Hub75<'d> {
         fast_pin_down(oe_pin);
         let mut bit_nr = data.len() - 1;
         for data in data {
-            // this is a binary coded modulation which displays the more significant bits
-            // for a longer time
-            //
-            // bit n     is displayed for 2^(n  ) frames
-            // bit (n-1) is displayed for 2^(n-2) frames
-            // ...
-            // bit (0)   is displayed for 2^(0  ) frames
-            //
-            // this makes the MSB have a larger impact in perception, simulating more color
-            // resolution by utilizing the time factor instead of variable brightness
-            //
-            // Each frame is displayed for ~120us, so on a 6-bit depth image:
-            // bit 5: 3840us
-            // bit 4: 1920us
-            // bit 3:  960us
-            // bit 2:  480us
-            // bit 1:  240us
-            // bit 0:  120us
-            //
-            // total frame time: 7560us (7.5ms)
-            //
-            // Cutting the bit depth to 5-bit would halve the necessary time to display an image
             let tot_frames = 1 << bit_nr;
             for _ in 0..tot_frames {
                 for (i, row) in data.iter().enumerate() {
