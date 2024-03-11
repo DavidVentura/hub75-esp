@@ -40,4 +40,5 @@ At this speed, it's reasonable to run 2 screens on 6-bit depth, or up to 4 on 5-
 	- You need to use 4 contiguous pins (for me: 12, 13, 14, 15) for ABCD
 
 ## Other
-There's a script (`script.py`) which can convert a 64x32 PNG into a rust array, which you can copy-paste into the source.
+There's a script (`script.py`) which can convert a set of 64x32 PNG files into a binary file in the right format for the ESP32.
+You can `include_bytes!` the file later.

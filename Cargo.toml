@@ -28,8 +28,8 @@ embassy = ["esp-idf-svc/embassy-sync", "esp-idf-svc/critical-section", "esp-idf-
 [dependencies]
 log = { version = "0.4", default-features = false }
 esp-idf-svc = { version = "0.48", default-features = false }
-hub75 = { version = "0.1.1", path = "../hub75-rs" }
 esp-idf-hal = "0.43.1"
+hub75 = { version = "0.1.1", path = "../hub75-rs" }
 embedded-hal = "1.0.0"
 
 [build-dependencies]

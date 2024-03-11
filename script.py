@@ -15,10 +15,15 @@ lut = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
        182, 184, 186, 189, 191, 193, 196, 198, 200, 203, 205, 208, 210, 213, 215, 218, 220,
        223, 225, 228, 231, 233, 236, 239, 241, 244, 247, 249, 252, 255,]
 
-out = []
+out = bytearray()
 
-print('[')
 i = 0
+
+bitdepth = 6
+bitmasks = []
+for i in range(bitdepth, 0, -1):
+    bitmasks.append(1 << (i+1))
+
 for fname in sorted(glob.glob("/home/david/nyan/*png")):
     if i > 1111:
         break
@@ -28,30 +33,19 @@ for fname in sorted(glob.glob("/home/david/nyan/*png")):
 
     assert height == 32
 
-    print('[')
-    # 6 bit color-depth
-    #for mask in [0x80, 0x40, 0x20, 0x10, 0x8, 0x4]:
-    # 5 bit color-depth
-    for mask in [0x80, 0x40, 0x20, 0x10, 0x8]:
-        print('[')
+    for mask in bitmasks:
         for y in range(0, height//2): # need to take 2 pix at once
-            print('[', end='')
             for x in range(0, width):
                 r1, g1, b1 = im.getpixel((x, y))
                 r2, g2, b2 = im.getpixel((x, y+16))
-                #print(r1, g1, b1, r2, g2, b2)
 
-                #b1 = x * 4
-                #b2 = x * 4
                 r1 = lut[r1]
                 g1 = lut[g1]
                 b1 = lut[b1]
                 r2 = lut[r2]
                 g2 = lut[g2]
                 b2 = lut[b2]
-                # for now hack for 1 bit res
-                # later take bit N
-                # 1011_1011
+
                 r1 = 0b0001_0000 if r1 & mask else 0
                 g1 = 0b0100_0000 if g1 & mask else 0
                 b1 = 0b1000_0000 if b1 & mask else 0
@@ -61,9 +55,7 @@ for fname in sorted(glob.glob("/home/david/nyan/*png")):
 
 
                 outpix = r1 | g1 | b1 | r2 | g2 | b2
-                print(f'{hex(outpix)}_u8', end=', ')
-            print('],',)
-        print('],',)
-    print('],')
+                out.append(outpix)
     i+=1
-print('];')
+
+open('data/out.bin', 'wb').write(out)

@@ -1,10 +1,10 @@
 use esp_idf_hal::peripherals::Peripherals;
 
-mod generated;
 mod hub75;
 
-use generated::frames;
 use hub75::{Hub75, Pins};
+
+static FRAMES: &[u8; 675840] = include_bytes!("../data/out.bin");
 
 fn main() {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -16,7 +16,6 @@ fn main() {
 
     let p = Peripherals::take().unwrap();
 
-    //let image = include_bytes!("../out.bin");
     let _pins = Pins::new(
         p.pins.gpio2.into(),
         p.pins.gpio4.into(),
@@ -33,11 +32,13 @@ fn main() {
         p.pins.gpio27.into(),
     );
 
+    let frames = unsafe { &*(FRAMES.as_ptr() as *const [[[[u8; 64]; 16]; 6]; 110]) };
     let h = Hub75 { pins: _pins };
     loop {
         for frame in frames.iter() {
             for _ in 0..5 {
-                h.render(&frame);
+                h.render(frame);
+                std::thread::sleep(std::time::Duration::from_millis(10));
             }
         }
     }
