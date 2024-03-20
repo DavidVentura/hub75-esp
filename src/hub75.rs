@@ -173,26 +173,79 @@ impl<'d> Hub75<'d> {
                     for element in row.iter() {
                         let rgb1 = *element as u32 & 0b1101_0000;
                         let rgb2 = *element as u32 & 0b0000_1011;
+                        let r1 = rgb1 & (1 << 7);
+                        let g1 = rgb1 & (1 << 6);
+                        let b1 = rgb1 & (1 << 4);
 
-                        // TODO 2/18 hardcoded
-                        let pixdata: u32 = rgb1 >> 2;
-                        let pixdata = pixdata | (rgb2 << 18) | (1 << clkpin);
-                        let notpixdata: u32 = ((!pixdata) & rgb_mask) | (1 << clkpin);
+                        let r2 = rgb2 & (1 << 3);
+                        let g2 = rgb2 & (1 << 1);
+                        let b2 = rgb2 & (1 << 0);
 
-                        // set some pixel values & clock _down_
-                        fast_pin_clear(notpixdata);
-                        // set remaining pixel values & clock _up_
-                        fast_pin_set(pixdata);
+                        if r1 > 0 {
+                            self.pins._r1.set_high();
+                        } else {
+                            self.pins._r1.set_low();
+                        }
+                        if g1 > 0 {
+                            self.pins._g1.set_high();
+                        } else {
+                            self.pins._g1.set_low();
+                        }
+                        if b1 > 0 {
+                            self.pins._b1.set_high();
+                        } else {
+                            self.pins._b1.set_low();
+                        }
+                        if r2 > 0 {
+                            self.pins._r2.set_high();
+                        } else {
+                            self.pins._r2.set_low();
+                        }
+                        if g2 > 0 {
+                            self.pins._g2.set_high();
+                        } else {
+                            self.pins._g2.set_low();
+                        }
+                        if b2 > 0 {
+                            self.pins._b2.set_high();
+                        } else {
+                            self.pins._b2.set_low();
+                        }
+                        self.pins._clk.set_low();
+                        self.pins._clk.set_high();
                     }
-                    fast_pin_up(oe_pin);
-                    fast_pin_down(lat_pin);
-                    fast_pin_up(lat_pin);
+
+                    self.pins._oe.set_high();
+                    //fast_pin_down(lat_pin);
+                    //fast_pin_up(lat_pin);
+                    self.pins._lat.set_low();
+                    self.pins._lat.set_high();
 
                     // TODO: 12 hardcoded
-                    let addrdata: u32 = (i as u32) << 12;
-                    let not_addrdata: u32 = !addrdata & addrmask;
-                    fast_pin_clear(not_addrdata);
-                    fast_pin_set(addrdata);
+                    //let addrdata: u32 = (i as u32) << 12;
+                    //let not_addrdata: u32 = !addrdata & addrmask;
+                    //fast_pin_clear(not_addrdata);
+                    //fast_pin_set(addrdata);
+                    if i & 1 > 0 {
+                        self.pins._a.set_high();
+                    } else {
+                        self.pins._a.set_low();
+                    }
+                    if i & 2 > 0 {
+                        self.pins._b.set_high();
+                    } else {
+                        self.pins._b.set_low();
+                    }
+                    if i & 4 > 0 {
+                        self.pins._c.set_high();
+                    } else {
+                        self.pins._c.set_low();
+                    }
+                    if i & 8 > 0 {
+                        self.pins._d.set_high();
+                    } else {
+                        self.pins._d.set_low();
+                    }
                 }
             }
             bit_nr -= 1;
