@@ -188,10 +188,8 @@ impl<'d> Hub75<'d> {
                             | (g2 << 18)
                             | (b2 << 21);
                         let not_rgb = !rgb & rgb_mask;
-                        fast_pin_clear(not_rgb);
-                        fast_pin_set(rgb & rgb_mask);
-                        self.pins._clk.set_low();
-                        self.pins._clk.set_high();
+                        fast_pin_clear(not_rgb | (1 << clkpin));
+                        fast_pin_set((rgb & rgb_mask) | (1 << clkpin));
                     }
 
                     self.pins._oe.set_high();
