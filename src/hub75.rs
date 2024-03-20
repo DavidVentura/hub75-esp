@@ -200,30 +200,10 @@ impl<'d> Hub75<'d> {
                     self.pins._lat.set_high();
 
                     // TODO: 12 hardcoded
-                    //let addrdata: u32 = (i as u32) << 12;
-                    //let not_addrdata: u32 = !addrdata & addrmask;
-                    //fast_pin_clear(not_addrdata);
-                    //fast_pin_set(addrdata);
-                    if i & 1 > 0 {
-                        self.pins._a.set_high();
-                    } else {
-                        self.pins._a.set_low();
-                    }
-                    if i & 2 > 0 {
-                        self.pins._b.set_high();
-                    } else {
-                        self.pins._b.set_low();
-                    }
-                    if i & 4 > 0 {
-                        self.pins._c.set_high();
-                    } else {
-                        self.pins._c.set_low();
-                    }
-                    if i & 8 > 0 {
-                        self.pins._d.set_high();
-                    } else {
-                        self.pins._d.set_low();
-                    }
+                    let addrdata: u32 = (i as u32) << 12;
+                    let not_addrdata: u32 = !addrdata & addrmask;
+                    fast_pin_clear(not_addrdata);
+                    fast_pin_set(addrdata);
                 }
             }
             bit_nr -= 1;
