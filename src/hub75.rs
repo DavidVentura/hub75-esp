@@ -181,36 +181,15 @@ impl<'d> Hub75<'d> {
                         let g2 = rgb2 & (1 << 1);
                         let b2 = rgb2 & (1 << 0);
 
-                        if r1 > 0 {
-                            self.pins._r1.set_high();
-                        } else {
-                            self.pins._r1.set_low();
-                        }
-                        if g1 > 0 {
-                            self.pins._g1.set_high();
-                        } else {
-                            self.pins._g1.set_low();
-                        }
-                        if b1 > 0 {
-                            self.pins._b1.set_high();
-                        } else {
-                            self.pins._b1.set_low();
-                        }
-                        if r2 > 0 {
-                            self.pins._r2.set_high();
-                        } else {
-                            self.pins._r2.set_low();
-                        }
-                        if g2 > 0 {
-                            self.pins._g2.set_high();
-                        } else {
-                            self.pins._g2.set_low();
-                        }
-                        if b2 > 0 {
-                            self.pins._b2.set_high();
-                        } else {
-                            self.pins._b2.set_low();
-                        }
+                        let rgb = (r1 >> 5)
+                            | (g1 >> 2)
+                            | (b1 << 1)
+                            | (r2 << 15)
+                            | (g2 << 18)
+                            | (b2 << 21);
+                        let not_rgb = !rgb & rgb_mask;
+                        fast_pin_clear(not_rgb);
+                        fast_pin_set(rgb & rgb_mask);
                         self.pins._clk.set_low();
                         self.pins._clk.set_high();
                     }
