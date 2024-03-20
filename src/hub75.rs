@@ -193,11 +193,9 @@ impl<'d> Hub75<'d> {
                         fast_pin_set((rgb & rgb_mask) | (1 << clkpin));
                     }
 
-                    self.pins._oe.set_high();
-                    //fast_pin_down(lat_pin);
-                    //fast_pin_up(lat_pin);
-                    self.pins._lat.set_low();
-                    self.pins._lat.set_high();
+                    fast_pin_up(oe_pin);
+                    fast_pin_down(lat_pin);
+                    fast_pin_up(lat_pin);
 
                     // TODO: 12 hardcoded
                     let addrdata: u32 = (i as u32) << 12;
