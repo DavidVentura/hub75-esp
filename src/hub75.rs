@@ -174,23 +174,10 @@ impl<'d> Hub75<'d> {
                         // BGR BGR
                         let rgb1 = *element as u32 & 0b1101_0000;
                         let rgb2 = *element as u32 & 0b0000_1011;
-                        let r1 = rgb1 & (1 << 4);
-                        let g1 = rgb1 & (1 << 6);
-                        let b1 = rgb1 & (1 << 7);
-
-                        let r2 = rgb2 & (1 << 0);
-                        let g2 = rgb2 & (1 << 1);
-                        let b2 = rgb2 & (1 << 3);
-
-                        let rgb = (r1 >> 2)
-                            | (g1 >> 2)
-                            | (b1 >> 2)
-                            | (r2 << 18)
-                            | (g2 << 18)
-                            | (b2 << 18);
+                        let rgb = (rgb1 >> 2) | (rgb2 << 18);
                         let not_rgb = !rgb & rgb_mask;
                         fast_pin_clear(not_rgb | (1 << clkpin));
-                        fast_pin_set((rgb & rgb_mask) | (1 << clkpin));
+                        fast_pin_set((rgb) | (1 << clkpin));
                     }
 
                     fast_pin_up(oe_pin);
