@@ -1,10 +1,14 @@
 use esp_idf_hal::peripherals::Peripherals;
+use std::time::Instant;
 
 mod hub75;
 
 use hub75::{Hub75, Pins};
 
-static FRAMES: &[u8; 6144 * 110] = include_bytes!("../data/out.bin");
+const BPLANE_SIZE: usize = 1024;
+const BIT_DEPTH: usize = 5;
+const FRAME_COUNT: usize = 10;
+static FRAMES: &[u8; BIT_DEPTH * BPLANE_SIZE * FRAME_COUNT] = include_bytes!("../data/out.bin");
 
 fn main() {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -32,8 +36,9 @@ fn main() {
         p.pins.gpio27.into(),
     );
 
-    let frames = unsafe { &*(FRAMES.as_ptr() as *const [[[[u8; 64]; 16]; 6]; 110]) };
-    let h = Hub75 { pins: _pins };
+    let frames =
+        unsafe { &*(FRAMES.as_ptr() as *const [[[[u8; 64]; 16]; BIT_DEPTH]; FRAME_COUNT]) };
+    let mut h = Hub75 { pins: _pins };
     loop {
         for frame in frames.iter() {
             for _ in 0..5 {
