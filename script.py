@@ -57,6 +57,13 @@ for fname in sorted(glob.glob("/home/david/nyan/*png")):
 
 
                 outpix = r1 | g1 | b1 | r2 | g2 | b2
+                if x == 0 or x == (width - 1):
+                    outpix = 0
+
+                if y == 0:
+                    outpix &= 0b0000_1111
+                if y == 31:
+                    outpix &= 0b1111_0000
                 out.append(outpix)
     i+=1
 
