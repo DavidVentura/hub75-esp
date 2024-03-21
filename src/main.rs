@@ -5,9 +5,11 @@ mod hub75;
 
 use hub75::{Hub75, Pins};
 
-const BPLANE_SIZE: usize = 1024;
-const BIT_DEPTH: usize = 5;
-const FRAME_COUNT: usize = 10;
+const PANEL_ROW_H: usize = 32;
+const TOTAL_IMG_W: usize = 128; //64;
+const BPLANE_SIZE: usize = PANEL_ROW_H * TOTAL_IMG_W;
+const BIT_DEPTH: usize = 3;
+const FRAME_COUNT: usize = 40;
 static FRAMES: &[u8; BIT_DEPTH * BPLANE_SIZE * FRAME_COUNT] = include_bytes!("../data/out.bin");
 
 fn main() {
@@ -31,18 +33,22 @@ fn main() {
         p.pins.gpio13.into(),
         p.pins.gpio14.into(),
         p.pins.gpio15.into(),
+        p.pins.gpio22.into(),
         p.pins.gpio25.into(),
         p.pins.gpio26.into(),
         p.pins.gpio27.into(),
     );
 
-    let frames =
-        unsafe { &*(FRAMES.as_ptr() as *const [[[[u8; 64]; 16]; BIT_DEPTH]; FRAME_COUNT]) };
+    let frames = unsafe {
+        &*(FRAMES.as_ptr() as *const [[[[u8; TOTAL_IMG_W]; PANEL_ROW_H]; BIT_DEPTH]; FRAME_COUNT])
+    };
     let mut h = Hub75 { pins: _pins };
     loop {
         for frame in frames.iter() {
-            for _ in 0..5 {
+            for _ in 0..10 {
+                let start = Instant::now();
                 h.render(frame);
+                println!("elapsed {:?}", start.elapsed());
                 //std::thread::sleep(std::time::Duration::from_millis(10));
             }
         }

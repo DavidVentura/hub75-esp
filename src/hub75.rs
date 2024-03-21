@@ -19,6 +19,7 @@ pub struct Pins<'d> {
     _b: PinDriver<'d, AnyOutputPin, Output>,
     _c: PinDriver<'d, AnyOutputPin, Output>,
     _d: PinDriver<'d, AnyOutputPin, Output>,
+    _e: PinDriver<'d, AnyOutputPin, Output>,
     _clk: PinDriver<'d, AnyOutputPin, Output>,
     _lat: PinDriver<'d, AnyOutputPin, Output>,
     _oe: PinDriver<'d, AnyOutputPin, Output>,
@@ -40,6 +41,7 @@ impl<'d> Pins<'d> {
         b: AnyOutputPin,
         c: AnyOutputPin,
         d: AnyOutputPin,
+        e: AnyOutputPin,
         clk: AnyOutputPin,
         lat: AnyOutputPin,
         oe: AnyOutputPin,
@@ -65,6 +67,7 @@ impl<'d> Pins<'d> {
             b.pin(),
             c.pin(),
             d.pin(),
+            e.pin(),
             clk.pin(),
             lat.pin(),
             oe.pin(),
@@ -76,7 +79,8 @@ impl<'d> Pins<'d> {
         let rgb2_mask: u32 = (1 << r2.pin()) | (1 << g2.pin()) | (1 << b2.pin());
         let rgb_mask = rgb1_mask | rgb2_mask;
 
-        let addr_mask: u32 = (1 << a.pin()) | (1 << b.pin()) | (1 << c.pin()) | (1 << d.pin());
+        let addr_mask: u32 =
+            (1 << a.pin()) | (1 << b.pin()) | (1 << c.pin()) | (1 << d.pin()) | (1 << e.pin());
 
         let _r1 = PinDriver::output(r1).unwrap();
         let _g1 = PinDriver::output(g1).unwrap();
@@ -88,6 +92,7 @@ impl<'d> Pins<'d> {
         let _b = PinDriver::output(b).unwrap();
         let _c = PinDriver::output(c).unwrap();
         let _d = PinDriver::output(d).unwrap();
+        let _e = PinDriver::output(e).unwrap();
         let _clk = PinDriver::output(clk).unwrap();
         let _lat = PinDriver::output(lat).unwrap();
         let _oe = PinDriver::output(oe).unwrap();
@@ -107,6 +112,7 @@ impl<'d> Pins<'d> {
             _b,
             _c,
             _d,
+            _e,
             _clk,
             _lat,
             _oe,
@@ -120,12 +126,12 @@ pub struct Hub75<'d> {
 /// Represents a 64x32 image in RGB111 format.
 /// The depth of the data in a Frame maps to the bit depth of the resulting image.
 ///
-/// Each Frame is composed of 16 Rows of pixel data; though each Row is rendered to
+/// Each Frame is composed of 32 Rows of pixel data; though each Row is rendered to
 /// multiple rows on the display in parallel.
 ///
 /// A given Row R is composed of 64 bytes, which represent a single bit on the R, G and B channels
-/// for two pixels; the one at R and the one at R+16.
-pub type Frame = [[[u8; 64]; 16]];
+/// for two pixels; the one at R and the one at R+32.
+pub type Frame = [[[u8; 128]; 32]];
 
 impl<'d> Hub75<'d> {
     /// Render a Frame using binary coded modulation (BCM) which displays the
@@ -155,7 +161,7 @@ impl<'d> Hub75<'d> {
     ///
     /// At 6-bit depth, it's possible to render 64x64, but 128x64 requires going to 5-bit.
     #[link_section = ".iram1"]
-    pub fn render(&self, data: &Frame) {
+    pub fn render(&mut self, data: &Frame) {
         let oe_pin = self.pins.oe_pin;
         let clkpin = self.pins.clk_pin;
         let lat_pin = self.pins.lat_pin;
@@ -189,7 +195,8 @@ impl<'d> Hub75<'d> {
                     fast_pin_up(lat_pin);
 
                     // TODO: 12 hardcoded
-                    let addrdata: u32 = (i as u32) << 12;
+                    let shifted_i = (i & 0b0_1111) | ((i & 0b1_0000) << 6);
+                    let addrdata: u32 = (shifted_i as u32) << 12;
                     let not_addrdata: u32 = !addrdata & addrmask;
                     fast_pin_clear(not_addrdata);
                     fast_pin_set(addrdata);

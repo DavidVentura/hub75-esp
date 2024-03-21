@@ -30,14 +30,16 @@ for fname in sorted(glob.glob("/home/david/nyan/*png")):
     with Image.open(fname) as im:
         width, height = im.size
         im = im.convert("RGB")
+        im = im.resize((width*2, height*2), resample=Image.Resampling.NEAREST)
+        width, height = im.size
 
-    assert height == 32
+    assert height == 64
 
     for mask in bitmasks:
         for y in range(0, height//2): # need to take 2 pix at once
             for x in range(0, width):
                 r1, g1, b1 = im.getpixel((x, y))
-                r2, g2, b2 = im.getpixel((x, y+16))
+                r2, g2, b2 = im.getpixel((x, y+32))
 
                 r1 = lut[r1]
                 g1 = lut[g1]
