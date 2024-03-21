@@ -22,7 +22,7 @@ i = 0
 bitdepth = 6
 bitmasks = []
 for i in range(bitdepth, 0, -1):
-    bitmasks.append(1 << (i+1))
+    bitmasks.append(1 << (i+(7-bitdepth)))
 
 for fname in sorted(glob.glob("/home/david/nyan/*png")):
     if i > 1111:
